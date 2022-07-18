@@ -41,9 +41,11 @@ public class RotationSlider extends Application {
         slider1.setMajorTickUnit(90);
         slider1.setBlockIncrement(10);
         Rotate rotate = new Rotate();
-        slider1.valueProperty().addListener((ObservableValue<? extends Number> observable, Number oldValue, Number newValue) -> {
-            //Setting the angle for the rotation
-            rotate.setAngle((double) newValue);
+        slider1.valueProperty().addListener(new ChangeListener<Number>() {
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+                //Setting the angle for the rotation
+                rotate.setAngle((double) newValue);
+            }
         });
         //Creating a slider for scaling
         Slider slider2 = new Slider(0.3, 2.1, 0.6);

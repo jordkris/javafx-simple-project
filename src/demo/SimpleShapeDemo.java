@@ -230,7 +230,7 @@ public class SimpleShapeDemo extends Application {
 //            System.out.println(Arrays.toString(targetLight.toArray()));
             return shape;
         }).forEachOrdered((_item) -> {
-//            System.out.println("\n");
+            
         });
     }
 
