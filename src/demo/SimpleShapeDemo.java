@@ -13,16 +13,23 @@ import static javafx.application.Application.launch;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.shape.Shape;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.layout.StackPane;
+import static javafx.scene.layout.StackPane.setAlignment;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Cylinder;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Sphere;
@@ -41,15 +48,12 @@ public class SimpleShapeDemo extends Application {
     private final Group root = new Group();
     private double anchorX, anchorY, anchorAngleX = 0, anchorAngleY = 0;
     private final DoubleProperty angleX = new SimpleDoubleProperty(0), angleY = new SimpleDoubleProperty(0);
-    private final Rotate cameraRotateX = new Rotate();
-    private final Rotate cameraRotateY = new Rotate();
+    private final Rotate cameraRotateX = new Rotate(), cameraRotateY = new Rotate();
     private Group connection = new Group();
     private final Group connectionContainer = new Group();
     private final Group boxes = new Group();
     private Sphere light;
-    private List<Pair> targetLight = new ArrayList<>();
-    private Color universalColor = new Color(1, 0, 0, 1);
-    private double cosinusValue;
+    private boolean skeletonState = true;
 
     private void init(Stage primaryStage) {
         camera.setTranslateX(-370);
@@ -126,44 +130,52 @@ public class SimpleShapeDemo extends Application {
         }
     }
 
-    public class Pair {
+    public class SimpleButton extends StackPane {
 
-        private Point3D sidePoint;
-        private Point3D normalPoint;
-        private Shape shape;
+        private final Rectangle back = new Rectangle(30, 10, Color.RED);
+        private final Button button = new Button();
+        private String buttonStyleOff = "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 0.2, 0.0, 0.0, 2); -fx-background-color: WHITE;";
+        private String buttonStyleOn = "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 0.2, 0.0, 0.0, 2); -fx-background-color: #00893d;";
+        private boolean state;
 
-        public Pair() {
+        public SimpleButton() {
+            getChildren().addAll(back, button);
+            setMinSize(30, 15);
+            back.maxWidth(30);
+            back.minWidth(30);
+            back.maxHeight(10);
+            back.minHeight(10);
+            back.setArcHeight(back.getHeight());
+            back.setArcWidth(back.getHeight());
+            back.setFill(Color.valueOf("#ced5da"));
+            Double r = 2.0;
+            button.setShape(new Circle(r));
+            setAlignment(button, Pos.CENTER_LEFT);
+            button.setMaxSize(15, 15);
+            button.setMinSize(15, 15);
+            button.setStyle(buttonStyleOff);
+            EventHandler<Event> click = new EventHandler<Event>() {
+                @Override
+                public void handle(Event e) {
+                    connectionToggler(state);
+                    if (state) {
+                        button.setStyle(buttonStyleOff);
+                        back.setFill(Color.valueOf("#ced5da"));
+                        setAlignment(button, Pos.CENTER_LEFT);
+                        state = false;
+                    } else {
+                        button.setStyle(buttonStyleOn);
+                        back.setFill(Color.valueOf("#80C49E"));
+                        setAlignment(button, Pos.CENTER_RIGHT);
+                        state = true;
+                    }
+                }
+            };
+
+            button.setFocusTraversable(false);
+            setOnMouseClicked(click);
+            button.setOnMouseClicked(click);
         }
-
-        public Point3D getSidePoint() {
-            return sidePoint;
-        }
-
-        public void setSidePoint(Point3D sidePoint) {
-            this.sidePoint = sidePoint;
-        }
-
-        public Point3D getNormalPoint() {
-            return normalPoint;
-        }
-
-        public void setNormalPoint(Point3D normalPoint) {
-            this.normalPoint = normalPoint;
-        }
-
-        public Shape getShape() {
-            return shape;
-        }
-
-        public void setShape(Shape shape) {
-            this.shape = shape;
-        }
-
-        @Override
-        public String toString() {
-            return "Pair{" + "sidePoint=" + sidePoint + ", normalPoint=" + normalPoint + ", shape=" + shape + '}';
-        }
-
     }
 
     public Point3D createNormalPoint(Point3D core, Point3D side) {
@@ -173,22 +185,24 @@ public class SimpleShapeDemo extends Application {
         return new Point3D(x, y, z);
     }
 
+    public Object[] createBox(double side, Color color, String title, double tX, double tY) {
+        SimpleBox sb = new SimpleBox(side, color); // Red
+        Group box = sb.getBox();
+        Text text = new Text(title);
+        box.setTranslateX(tX);
+        box.setTranslateY(tY);
+        text.setTranslateX(tX);
+        text.setTranslateY(tY);
+        text.setTranslateZ(-100);
+        return new Object[]{box, text};
+    }
+
     public double distance(Point3D a, Point3D b) {
         return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2) + Math.pow(a.getZ() - b.getZ(), 2));
     }
 
     public double getCosinus(Point3D a, Point3D b, Point3D c) {
         return Math.round(Math.pow(distance(a, b), 2) + Math.pow(distance(a, c), 2) - Math.pow(distance(b, c), 2)) / (2 * distance(a, b) * distance(a, c));
-    }
-
-    public void handleShading() {;
-        
-        targetLight.forEach((shapePair) -> {
-            System.out.print(String.format("%.2f|", getCosinus(shapePair.normalPoint, shapePair.sidePoint, getCoordinates(light))));
-            cosinusValue = getCosinus(shapePair.normalPoint, shapePair.sidePoint, getCoordinates(light)) + 1;
-            shapePair.getShape().setFill(new Color(1 - 1 * cosinusValue / 2, 0, 0, 1));
-        });
-        System.out.println(targetLight.size());
     }
 
     public Cylinder createConnection(Point3D origin, Point3D target) {
@@ -211,27 +225,35 @@ public class SimpleShapeDemo extends Application {
     }
 
     private void handleConnection(Group g) {
-        g.getChildren().stream().map((nodeShape) -> (Group) nodeShape).map((shape) -> {
-//            connection.getChildren().addAll(this.createConnection(this.getCoordinates(light), this.getCoordinates(shape)));
-            return shape;
-        }).map((shape) -> {
-//            System.out.println(this.getCoordinates(light));
+        double cosinusValue;
+        for (int i = 0; i < g.getChildren().size(); i++) {
+            Group shape = (Group) g.getChildren().get(i);
             Point3D shapeCoord = this.getCoordinates(shape);
-            Pair shapePair = new Pair();
-            shape.getChildren().forEach((rect) -> {
+
+            for (int j = 0; j < shape.getChildren().size(); j++) {
+                Rectangle rect = (Rectangle) shape.getChildren().get(j);
+                rect.setAccessibleText(String.format("Rect %s", j));
                 connection.getChildren().add(this.createConnection(this.getCoordinates(light), this.getCoordinates(rect)));
                 connection.getChildren().add(this.createConnection(this.getCoordinates(shape), this.createNormalPoint(shapeCoord, this.getCoordinates(rect))));
-                shapePair.setNormalPoint(this.createNormalPoint(shapeCoord, this.getCoordinates(rect)));
-                shapePair.setSidePoint(this.getCoordinates(rect));
-                shapePair.setShape((Shape) rect);
-                targetLight.add(shapePair);
-            });
+                cosinusValue = getCosinus(this.createNormalPoint(shapeCoord, this.getCoordinates(rect)), this.getCoordinates(rect), getCoordinates(light)) + 1;
+//                Color color = (Color) rect.getFill();
+                rect.setFill(new Color((1 - 1 * cosinusValue / 2), (1 - 1 * cosinusValue / 2), 0, 1));
+            }
+        }
+    }
 
-//            System.out.println(Arrays.toString(targetLight.toArray()));
-            return shape;
-        }).forEachOrdered((_item) -> {
-            
-        });
+    private void connectionToggler(boolean state) {
+        this.skeletonState = state;
+        PhongMaterial pm = new PhongMaterial();
+        for (Node n : this.connection.getChildren()) {
+            Cylinder c = (Cylinder) n;
+            if (!state) {
+                pm.setDiffuseColor(Color.GREY);
+            } else {
+                pm.setDiffuseColor(Color.TRANSPARENT);
+            }
+            c.setMaterial(pm);
+        }
     }
 
     private void initMouseControl(Node node, Scene scene) {
@@ -256,14 +278,9 @@ public class SimpleShapeDemo extends Application {
             angleY.set(anchorAngleY + anchorX - event.getSceneX());
             this.connectionContainer.getChildren().remove(connection);
             this.connection = new Group();
-            targetLight.clear();
             this.handleConnection(boxes);
             this.connectionContainer.getChildren().add(connection);
-            handleShading();
-        });
-
-        scene.setOnMouseReleased(event -> {
-//            System.out.println(this.getCoordinates(light));
+            connectionToggler(skeletonState);
         });
 
     }
@@ -310,50 +327,49 @@ public class SimpleShapeDemo extends Application {
     public void start(Stage primaryStage) throws Exception {
         this.init(primaryStage);
 
-        SimpleBox sb1 = new SimpleBox(100, universalColor); // Red
-        Group box1 = sb1.getBox();
-        Text text1 = new Text("Box 1");
-        box1.setTranslateX(-100);
-        box1.setTranslateY(-100);
-        text1.setTranslateX(-100);
-        text1.setTranslateY(-100);
-        text1.setTranslateZ(-100);
-
-        SimpleBox sb2 = new SimpleBox(100, universalColor); /// Green
-        Group box2 = sb2.getBox();
-        Text text2 = new Text("Box 2");
-        box2.setTranslateX(100);
-        box2.setTranslateY(-200);
-        text2.setTranslateX(100);
-        text2.setTranslateY(-200);
-        text2.setTranslateZ(-100);
-
-        SimpleBox sb3 = new SimpleBox(100, universalColor); // Blue
-        Group box3 = sb3.getBox();
-        Text text3 = new Text("Box 3");
-        box3.setTranslateX(-100);
-        box3.setTranslateY(100);
-        text3.setTranslateX(-100);
-        text3.setTranslateY(100);
-        text3.setTranslateZ(-100);
-
-        SimpleBox sb4 = new SimpleBox(100, universalColor); // Yellow
-        Group box4 = sb4.getBox();
-        Text text4 = new Text("Box 4");
-        box4.setTranslateX(100);
-        box4.setTranslateY(200);
-        text4.setTranslateX(100);
-        text4.setTranslateY(200);
-        text4.setTranslateZ(-100);
-
         // Light
         SimpleLight sl = new SimpleLight(10, Color.YELLOW);
         light = sl.getLight();
-        light.setTranslateX(200);
         Group lights = new Group(light);
 
+        Object[] obj;
+        obj = this.createBox(100, Color.CORAL, "Box 1", -200, -200);
+        Group box1 = (Group) obj[0];
+        Text text1 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 2", 0, -200);
+        Group box2 = (Group) obj[0];
+        Text text2 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 3", 200, -200);
+        Group box3 = (Group) obj[0];
+        Text text3 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 4", -200, 0);
+        Group box4 = (Group) obj[0];
+        Text text4 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 5", 200, 0);
+        Group box5 = (Group) obj[0];
+        Text text5 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 6", -200, 200);
+        Group box6 = (Group) obj[0];
+        Text text6 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 7", 0, 200);
+        Group box7 = (Group) obj[0];
+        Text text7 = (Text) obj[1];
+
+        obj = this.createBox(100, Color.CORAL, "Box 8", 200, 200);
+        Group box8 = (Group) obj[0];
+        Text text8 = (Text) obj[1];
+
         // Box or Cube
-        boxes.getChildren().addAll(box1, box2, box3, box4);
+        boxes.getChildren().addAll(box1, box2, box3, box4, box5, box6, box7, box8);
+
+        // Text
+        Group texts = new Group(text1, text2, text3, text4, text5, text6, text7, text8);
 
         this.handleConnection(boxes);
         connectionContainer.getChildren().add(connection);
@@ -364,22 +380,27 @@ public class SimpleShapeDemo extends Application {
         Slider sliderY = this.createSlider(-200, 250, "y", shapes);
         Label labelY = this.createLabel("Horizontal Camera", -300, 250);
 
-        // Text
-        Group texts = new Group(text1, text2, text3, text4);
-
         // controls
         Group controls = new Group(sliderX, sliderY, labelX, labelY);
 
+        // Button
+        SimpleButton sb = new SimpleButton();
+        sb.setTranslateX(300);
+        Label labelSb = this.createLabel("Show Skeleton", 300, 30);
+        connectionToggler(skeletonState);
         // All
-        root.getChildren().addAll(shapes, texts, controls);
+        root.getChildren().addAll(shapes, texts, sb, labelSb);
         Scene scene = new Scene(root, 800, 600, true);
 
-        handleShading();
         scene.setCamera(this.camera);
         this.initMouseControl(box1, scene);
         this.initMouseControl(box2, scene);
         this.initMouseControl(box3, scene);
         this.initMouseControl(box4, scene);
+        this.initMouseControl(box5, scene);
+        this.initMouseControl(box6, scene);
+        this.initMouseControl(box7, scene);
+        this.initMouseControl(box8, scene);
 //        this.initMouseControl(root, scene);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Box Example");
