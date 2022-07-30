@@ -56,27 +56,8 @@ public class LineUtility {
         return new Point3D(x, y, z);
     }
 
-//    public double distance(Point3D a, Point3D b) {
-//        return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2) + Math.pow(a.getZ() - b.getZ(), 2));
-//    }
     public double getCosinus(Point3D a, Point3D b, Point3D c) {
         return Math.round(Math.pow(a.distance(b), 2) + Math.pow(a.distance(c), 2) - Math.pow(b.distance(c), 2)) / (2 * a.distance(b) * a.distance(c));
-    }
-
-    public Point3D getMiddle(List<Point3D> points) {
-        List<Double> xPoints = new ArrayList();
-        List<Double> yPoints = new ArrayList();
-        List<Double> zPoints = new ArrayList();
-        for (Point3D point : points) {
-            xPoints.add(point.getX());
-            yPoints.add(point.getY());
-            zPoints.add(point.getZ());
-        }
-        double averageXPoints = xPoints.stream().mapToDouble(d -> d).average().getAsDouble();
-        double averageYPoints = yPoints.stream().mapToDouble(d -> d).average().getAsDouble();
-        double averageZPoints = zPoints.stream().mapToDouble(d -> d).average().getAsDouble();
-
-        return new Point3D(averageXPoints, averageYPoints, averageZPoints);
     }
 
     public void handleConnection(Group shapes, Group connection, SimpleLight light) {
@@ -85,34 +66,17 @@ public class LineUtility {
             Group shape = (Group) shapes.getChildren().get(i);
             Point3D shapeCoord = this.getCoordinates(shape);
             Shape subShape;
-            List<Point3D> subShapeMiddlePoints = new ArrayList();
             for (int j = 0; j < shape.getChildren().size(); j++) {
                 subShape = (Shape) shape.getChildren().get(j);
-                subShapeMiddlePoints.add(this.getCoordinates(subShape));
-//                System.out.println(this.getCoordinates(subShape));
-            }
-            Point3D shapeMiddlePoint = this.getMiddle(subShapeMiddlePoints);
-//            System.out.println(shapeMiddlePoint);
-            for (int j = 0; j < shape.getChildren().size(); j++) {
-                subShape = (Shape) shape.getChildren().get(j);
-                String color[] = subShape.getAccessibleText().split(",");
-                
-                // middle point
-//                Point3D normalPoint = this.createNormalPoint(shapeMiddlePoint, this.getCoordinates(subShape));
-                // shape coordinate
                 Point3D normalPoint = this.createNormalPoint(shapeCoord, this.getCoordinates(subShape));
-                
                 connection.getChildren().add(this.createConnection(this.getCoordinates(light), this.getCoordinates(subShape)));
                 connection.getChildren().add(this.createConnection(this.getCoordinates(shape), normalPoint));
                 cosinusValue = getCosinus(normalPoint, this.getCoordinates(subShape), getCoordinates(light)) + 1;
-//                if (j == 4) {
-//                    System.out.println(cosinusValue);
-//                }
+                String color[] = subShape.getAccessibleText().split(",");
                 double redValue = Math.round((1 - 1 * cosinusValue / 2) * Float.parseFloat(color[0]) * 100.0) / 100.0;
                 double greenValue = Math.round((1 - 1 * cosinusValue / 2) * Float.parseFloat(color[1]) * 100.0) / 100.0;
                 double blueValue = Math.round((1 - 1 * cosinusValue / 2) * Float.parseFloat(color[2]) * 100.0) / 100.0;
                 subShape.setFill(new Color(redValue, greenValue, blueValue, 1));
-//                System.out.println(String.format("%.2f %.2f %.2f", redValue, greenValue, blueValue));
             }
         }
     }
